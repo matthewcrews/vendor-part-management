@@ -36,12 +36,20 @@
     - NeedingAsinMatches
 3. NeedingAsinMatches
     - PossibleAsin
-4. PossibleAsin
+4. NoAsinMatches
+    - New
+5. AwaitingAsinMatch
     - NeedingAsinMatches
     - AssignedAsin
-5. AssignedAsin
+6. AssignedAsin
     - AssignedStockItem
-6. AssignedStockItem
+7. ProfitAnalyzed
+    - Unsynced
+    - ProfitAnalyzed
+8. Unsynced
+    - Synced
+9. Synced
+    - Unsynced
 
 ### Possible Initial States
 
@@ -57,7 +65,7 @@ This would be a search of possible matches by UPC, EAN, or GTIN. The StockItems 
 
 ### PossibleStockitem -> NeedingAsin
 
-This is a search on Amazon by UPC to find which Asins are possible matches. The input is the list of Vendor Parts which do not have any possible Stock Item Matches, or  The possible matches are stored in a PossibleAsin List.
+This transition can occur two different ways. The first is that the Item has no potential Stockitem matches. If that is the case, then the item is automatically moved to the `NeedingAsin` state. This can also occur if the user decides that none of the existing `StockItems` is a valid match. When this happens, the potential matches are removed and the items status is updated to `NeedingAsin`.
 
 ### NeedingAsin -> PossibleAsinMatch
 

@@ -19,6 +19,8 @@ type AlternateId =
     | EAN of EAN
     | GTIN of GTIN
 
+type PriceFloor = PriceFloor of decimal
+
 type Description = Description of string
 
 type AmazonItem = {
@@ -27,23 +29,23 @@ type AmazonItem = {
     AlternateIds : AlternateId list
 }
 
-type InventoryItem = {
+type StockItem = {
     InventoryId : InventoryId
     Description : Description
     AlternateIds : AlternateId list
 }
 
-type UpcMap = Map<UPC, InventoryItem list>
-type EanMap = Map<EAN, InventoryItem list>
-type AsinMap = Map<Asin, InventoryItem list>
-type GtinMap = Map<GTIN, InventoryItem list>
+type UpcMap = Map<UPC, StockItem list>
+type EanMap = Map<EAN, StockItem list>
+type AsinMap = Map<Asin, StockItem list>
+type GtinMap = Map<GTIN, StockItem list>
 
 type VendorPartPrice = {
     UnitOfMeasure : UnitOfMeasure
     UnitCost : UnitCost
 }
 
-type VendorPart = {
+type PartData = {
     VendorPartNumber : VendorPartNumber
     Description : Description
     Status : Status
@@ -52,14 +54,59 @@ type VendorPart = {
     AlternateIds : AlternateId list
 }
 
+type PossibleStockItem = {
+    PartData : PartData
+    StockItems : StockItem list
+}
+
+type AwaitingAsinMatch = {
+    PartData : PartData
+    Asins : Asin list
+}
+
+type AssignedAsin = {
+    PartData : PartData
+    Asin : Asin
+}
+
+type ProfitAnalyzed = {
+    PartData : PartData
+    Asin : Asin
+    PriceFloor : PriceFloor
+}
+
+type Unsynced = {
+    PartData : PartData
+    InventoryId : InventoryId
+}
+
+type Synced = Unsynced
+
+type PartState =
+| NewPart of PartData
+| PossibleStockItem of PossibleStockItem
+| NeedingAsinMaches of PartData
+| NoAsinMatches of PartData
+| AwaitingAsinMatch of AwaitingAsinMatch
+| AssignedAsin of AssignedAsin
+| ProfitAnalyzed of ProfitAnalyzed
+| Unsynced of Unsynced
+| Synced of Synced
+
+
+type VendorPart = {
+    VendorPartNumber : VendorPartNumber
+    State : PartState
+}
+
 type Vendor = {
     VendorId : VendorId
     Description : Description
     Catalog : VendorPart list
 }
 
-type UpcMatcher = UpcMap -> VendorPart -> InventoryItem list
-type EanMatcher = EanMap -> VendorPart -> InventoryItem list
-type GtinMatcher = GtinMap -> VendorPart -> InventoryItem list
-type AsinMatcher = AsinMap -> VendorPart -> InventoryItem list
+// type UpcMatcher = UpcMap -> PartData -> InventoryItem list
+// type EanMatcher = EanMap -> PartData -> InventoryItem list
+// type GtinMatcher = GtinMap -> PartData -> InventoryItem list
+// type AsinMatcher = AsinMap -> PartData -> InventoryItem list
 
