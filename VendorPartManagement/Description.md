@@ -1,24 +1,6 @@
-# How this should work
+# Vendor Part Management
 
-- Take a list of Vendor Parts
-- Filter the list into two: Existing Parts and New Vendor Parts
-
-## With Existing Parts
-
-- Update the pricing for the Existing parts
-
-## With New Parts
-
-- Save the parts into the Vendor Part Table
-- Filter the new parts into three sets: No Asin, No InventoryId
-- Run a InvetoryItem match task which will lookup potential matches for the VendorParts. If there are potential matches then it will be stored in a VendorPartStockItemMatch table. These items will now wait until a use selects which StockItem it matches or says, there are no matches.
-
-
----
-
-**Note** This model should be able to work with Vendor Parts getting and Asin and without getting an Asin.
-
----
+A tool for managing the process of importing and updating Vendor Parts to prevent the creation of duplicate Stock Items and filter the Parts that are imported into the Replenishment service.
 
 ## Possible Vendor Part States
 
@@ -60,6 +42,44 @@
 - New
 - AssignedAsin
 - Unsynced
+
+## State Definitions
+
+### New
+
+A part which does not have an `InventoryId` or `Asin` assigned to it.
+
+### NoAsinMatches
+
+A part for which no matches to an `Asin` could be found.
+
+### AwaitingAsinMatch
+
+A Part which has one or more `Asin` that it could be associated with.
+
+### AssignedAsin
+
+A Part which has had an `Asin` value assigned to it.
+
+### ProfitAnalyzed
+
+A Part which has had a financial evaluation performed which indicates the Sales Price at which it would be affordable.
+
+### CheckForStockItemMatch
+
+A Part which has been deemed worth importing that needs to be checked for whether a matching `StockItem` already exists.
+
+### PossibleStockItem
+
+A Part which has a list of possible `StockItem` values that it could be a match for.
+
+### Unsynced
+
+A Part which has an `InventoryId` value but has changes made to it that have not been imported into the Replenishment service.
+
+### Synced
+
+A part which has an `InventoryId` value and has had all of its values synced to the Replenishment service.
 
 ## State Transition Functions
 
@@ -122,3 +142,18 @@ Should a user decide that none of the `Asin`s are good matches, then they can de
 ### ProfitAnalyzed -> ProfitAnalyzed
 
 Part in the `ProfitAnalyzed` state will have their numbers continually updated as new information comes in. This will look like a transition back to the same state.
+
+## Periodic Tasks
+
+- Updating incomplete Asin information
+- Evaluating Part profitability
+- Syncing parts in the `Unsynced` state
+- Creating parts in the `AwaitingCreate` state
+- Matching parts in the `CheckForStockItemMatch` state
+
+## User Interaction
+
+- Loading Vendor Part files
+- Selecting Asin Matches
+- Select Stock Item Matches
+- Reseting parts stuck in a terminal state
