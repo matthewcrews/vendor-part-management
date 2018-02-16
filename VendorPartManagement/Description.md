@@ -30,22 +30,26 @@
 ---
 
 1. New
-    - PossibleStockItem
-2. PossibleStockItem
-    - AssignedStockItem
-    - NeedingAsinMatches
-3. NeedingAsinMatches
-    - PossibleAsin
-4. NoAsinMatches
+    - NoAsinMatches
+    - AwaitingAsinMatch
+2. NoAsinMatches
     - New
-5. AwaitingAsinMatch
+3. AwaitingAsinMatch
     - New
     - AssignedAsin
-6. AssignedAsin
-    - AssignedStockItem
-7. ProfitAnalyzed
-    - Synced
+4. AssignedAsin
     - ProfitAnalyzed
+    - New
+5. ProfitAnalyzed
+    - CheckForStockItemMatch
+    - ProfitAnalyzed
+    - New
+6. CheckForStockItemMatch
+    - PossibleStockItem
+    - Synced
+7. PossibleStockItem
+    - Synced
+    - New
 8. Unsynced
     - Synced
 9. Synced
@@ -55,41 +59,49 @@
 
 - New
 - AssignedAsin
-- AssignedStockItem
+- Unsynced
 
 ## State Transition Functions
 
-### New -> PossibleStockItem
+### New -> NoAsinMatches
 
-This would be a search of possible matches by UPC, EAN, or GTIN. The `StockItems` that do match get added to a `PossibleMatch list`. If there are no StockItem Matches, then it returns an empty list.
+For all parts in the `New` state a process queries the possible Asin values and nothing is returned. When this occurs the Part is moved to the `NoAsinMatches` state.
 
-### PossibleStockitem -> NeedingAsin
+### New -> AwaitingAsinMatch
 
-This transition can occur two different ways. The first is that the Item has no potential Stockitem matches. If that is the case, then the item is automatically moved to the `NeedingAsin` state. This can also occur if the user decides that none of the existing `StockItems` is a valid match. When this happens, the potential matches are removed and the items status is updated to `NeedingAsin`.
-
-### PossibleStockItem -> AssignedStockItem
-
-The user looks at the list of possible `StockItem list` and selects the one they believe to be the best match. When the selection is made, it is persisted to the data store.
-
-### NeedingAsin -> AwaitingAsinMatch
-
-This takes the list of Vendor Parts which need an Asin and searches for possible matches. If there are possible matches then the Vendor Part is moved from `NeedingAsin` to `AwaitingAsinMatch`. If no possible matches are found, then the part remains in the NeedingAsin state.
+For all parts in the `New` state a process queries for possible Asin matches by AlternateIds. A list of possible Asins if found and the Part is moved to the `AwaitingAsinMatch` state.
 
 ### AwaitingAsinMatch -> AssignedAsin
 
-When a Vendor Part has a list of possible Asins, the user will need to select which one is the correct one. When the user selects the correct Asin, the the Part moved to the `AssignedAsin` state.
+For all parts in the `AwaitingAsinMatch` state the user must select which `Asin` is the correct match. When the selection is made the Part is moved to the `AssignedAsin` state.
 
 ### AssignedAsin -> ProfitAnalyzed
 
 While the Part is in the `AssignedAsin` state the system will continually try to draw information in order to perform a profitability analysis. Once it does have enough information, it will compute a `PriceFloor` number. When this happens the Part moved to the `ProfitAnalyzed` state.
 
-### ProfitAnalyzed -> CheckForMatch
+### ProfitAnalyzed -> CheckForStockItemMatch
 
 The system will continually monitor if the profitability of the Part is high enough to justify whether to migrate it into the Replenishment system. From here it would move to `CheckForMatch` state to ensure that another Part has not already made it into the Replenish service.
 
-### CheckForMatch -> Synced
+### CheckForStockItemMatch -> Synced
 
-At the point it is, an InventoryId will be assigned and the data will be imported. The part will move to the `Synced` state.
+For parts in the `CheckForStockItemMatch` state, a process looks for possible matches to existing `StockItem`s. If not possible match is found then the part is assigned an `InventoryId` and is moved to the `Synced` status. This process also imports all the Part information necessary for creating the new `StockItem` in the Replenishment service.
+
+### CheckForStockItemMatch -> PossibleStockItem
+
+For parts in the `CheckForStockItemMatch` state, a process looks for possible matches to existing `StockItem`s. If possible matches are found then the item is moved to the `PossibleStockItem` status where it will wait for a User to confirm whether one of the `StockItem`s is a match.
+
+### PossibleStockItem -> AwaitingCreate
+
+If a part is in the `PossibleStockItem` status and the user decides that none of the potential matches are actually good, then they can decide to move the part to `AwaitingCreate` which tells the system to go ahead and create a new `StockItem` for the part.
+
+### PossibleStockItem -> Unsynced
+
+If a User decides that a part in the `PossibleStockItem` status does actually have a `StockItem` match then they can select that item. The `InventoryId` will be assigned to the part and it will be moved to the `Unsynced` status.
+
+### AwaitingCreate -> Synced
+
+A periodic task takes items in the `AwaitingCreate` status and creates a new corresponding `StockItem` for the Part. The Part is then moved to the `Synced` status.
 
 ### Synced -> Unsynced
 

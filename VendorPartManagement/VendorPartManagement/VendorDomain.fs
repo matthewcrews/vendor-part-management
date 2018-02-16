@@ -84,13 +84,13 @@ type Synced = Unsynced
 
 type PartState =
 | New of PartData
-| PossibleStockItem of PossibleStockItem
-| NeedingAsinMaches of PartData
 | NoAsinMatches of PartData
 | AwaitingAsinMatch of AwaitingAsinMatch
 | AssignedAsin of AssignedAsin
 | ProfitAnalyzed of ProfitAnalyzed
-| CheckForMatch of ProfitAnalyzed
+| CheckForStockItemMatch of ProfitAnalyzed
+| PossibleStockItem of PossibleStockItem
+| AwaitingCreate of ProfitAnalyzed
 | Unsynced of Unsynced
 | Synced of Synced
 
