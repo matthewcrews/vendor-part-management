@@ -2,7 +2,45 @@
 
 A tool for managing the process of importing and updating Vendor Parts to prevent the creation of duplicate Stock Items and filter the Parts that are imported into the Replenishment service.
 
-## Possible Vendor Part States
+## Vendor Part States
+
+### New
+
+A part which does not have an `InventoryId` or `Asin` assigned to it.
+
+### NoAsinMatches
+
+A part for which no matches to an `Asin` could be found.
+
+### AwaitingAsinMatch
+
+A Part which has one or more `Asin` that it could be associated with.
+
+### AssignedAsin
+
+A Part which has had an `Asin` value assigned to it. When a part is saved in this state then a check for an `AmazonItem` entity must be done to see if anythign exists. If no `AmazonItem` exists for the `Asin` the a new empty record is created so that the `AsinDataRefresh` knows to try and lookup information.
+
+### ProfitAnalyzed
+
+A Part which has had a financial evaluation performed which indicates the Sales Price at which it would be affordable.
+
+### CheckForStockItemMatch
+
+A Part which has been deemed worth importing that needs to be checked for whether a matching `StockItem` already exists.
+
+### PossibleStockItem
+
+A Part which has a list of possible `StockItem` values that it could be a match for.
+
+### Unsynced
+
+A Part which has an `InventoryId` value but has changes made to it that have not been imported into the Replenishment service.
+
+### Synced
+
+A part which has an `InventoryId` value and has had all of its values synced to the Replenishment service.
+
+## State Transitions
 
 ---
 
@@ -19,6 +57,7 @@ A tool for managing the process of importing and updating Vendor Parts to preven
 3. AwaitingAsinMatch
     - New
     - AssignedAsin
+    - NoAsinMatches
 4. AssignedAsin
     - ProfitAnalyzed
     - New
@@ -42,44 +81,6 @@ A tool for managing the process of importing and updating Vendor Parts to preven
 - New
 - AssignedAsin
 - Unsynced
-
-## State Definitions
-
-### New
-
-A part which does not have an `InventoryId` or `Asin` assigned to it.
-
-### NoAsinMatches
-
-A part for which no matches to an `Asin` could be found.
-
-### AwaitingAsinMatch
-
-A Part which has one or more `Asin` that it could be associated with.
-
-### AssignedAsin
-
-A Part which has had an `Asin` value assigned to it.
-
-### ProfitAnalyzed
-
-A Part which has had a financial evaluation performed which indicates the Sales Price at which it would be affordable.
-
-### CheckForStockItemMatch
-
-A Part which has been deemed worth importing that needs to be checked for whether a matching `StockItem` already exists.
-
-### PossibleStockItem
-
-A Part which has a list of possible `StockItem` values that it could be a match for.
-
-### Unsynced
-
-A Part which has an `InventoryId` value but has changes made to it that have not been imported into the Replenishment service.
-
-### Synced
-
-A part which has an `InventoryId` value and has had all of its values synced to the Replenishment service.
 
 ## State Transition Functions
 
@@ -145,11 +146,36 @@ Part in the `ProfitAnalyzed` state will have their numbers continually updated a
 
 ## Periodic Tasks
 
-- Updating incomplete Asin information
-- Evaluating Part profitability
-- Syncing parts in the `Unsynced` state
-- Creating parts in the `AwaitingCreate` state
-- Matching parts in the `CheckForStockItemMatch` state
+### Process Vendor Part Files
+
+Should run "frequently"
+
+- Get Unprocessed Vendor Part files
+- Separate parts into three sets: New, AssignedAsin, Unsynced
+- Save the Unsynced set to the datastore
+- Save the AssignedAsin set to the datastore
+- Save the New set to the data store
+- Mark the Vendor Part file as processed
+
+### Updating incomplete Asin information
+
+Frequency: Once a day
+
+- Get Asins in system which are missing data
+- Query Amazon for Asin information
+- Save update Asin informatoin to data store
+
+### Evaluating Part profitability
+
+- Query parts in the `AsinAssigned` status which have enough information to perform a Profit Analysis calculation.
+
+### Syncing parts in the `Unsynced` state
+
+### Creating parts in the `AwaitingCreate` state
+
+### Matching parts in the `CheckForStockItemMatch` state
+
+### Refresh `AmazonItem` data
 
 ## User Interaction
 
@@ -157,3 +183,58 @@ Part in the `ProfitAnalyzed` state will have their numbers continually updated a
 - Selecting Asin Matches
 - Select Stock Item Matches
 - Reseting parts stuck in a terminal state
+
+## Architecture
+
+- UI: ASP.NET MVC Web App using Razor Pages
+- Webserver: MVC in C# on Kestrel on .Net Core 2.0
+- Hosting: Azure WebPages
+- Authentication: Google / ASP.NET Core Identity
+- Authorization: ASP.NET Core Identity
+- Library: F# Domain Model
+- Persistence: Cosmos DB
+
+## Controllers
+
+The assumptions with the following constructor descriptions is that the basic CRUD controllers are implemented other than Delete.
+
+### Vendor
+
+- LoadVendorPartFile
+
+### VendorPart
+
+- Assign Asin
+- Assign Stock Item
+- ResetToNew
+- GetFromVendorInState
+
+### StockItem
+
+## Workflows
+
+### Loading Vendor Part File
+
+1. Index Page
+2. Select Load Vendor Part File
+3. Search for Vendor and select file to load. Click 'Full Catalog' option if applicable
+4. Load the file
+5. Process the file
+
+### Select Asin Matches
+
+1. Index Page
+2. Select Vendors screen
+3. Search for Vendor
+4. Select Vendor
+5. Select 'View Asin Matches'
+6. Choose Asin that matches Vendor Part and save. Ideally this would asynchronously save the changes to the persistence layer and provide feedback on the success or not (this may be possible using ViewComponents). If not, we can do a poor man's mass update one the items the user has chosen. You can also choose to 'Reset' the item and sending it back through the analysis loop.
+
+### Select Stock Item Matches
+
+1. Index Page
+2. Select Vendors screen
+3. Search for Vendor
+4. Select Vendor
+5. Select 'View Stock Item Matches'
+6. Choose Stock Item that matches Vendor Part and save. You can also choose to 'Reset' the item and sending it back through the analysis loop.
